@@ -1,0 +1,40 @@
+body {
+  margin: 0;
+  font-family: "Segoe UI", sans-serif;
+  background: linear-gradient(to right, #111827, #1f2937);
+  color: #f9fafb;
+}
+
+.app-container {
+  max-width: 700px;
+  margin: auto;
+  padding: 40px;
+  background-color: #1e293b;
+  border-radius: 16px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.3);
+}
+
+button {
+  padding: 10px 20px;
+  margin: 10px;
+  border-radius: 10px;
+  border: none;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.primary-btn { background-color: #3b82f6; color: white; }
+.confirm-btn { background-color: #10b981; color: white; }
+.cancel-btn  { background-color: #fbbf24; color: black; }
+.stop-btn    { background-color: #ef4444; color: white; }
+
+.question-box, .summary-box {
+  margin-top: 30px;
+}
+
+.response, .corrected {
+  background: #334155;
+  padding: 10px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+}
