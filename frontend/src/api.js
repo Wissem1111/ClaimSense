@@ -36,3 +36,13 @@ export async function skipUserQuestions() {
   });
   return await res.json();
 }
+
+
+export async function submitManualDeclaration(data) {
+  const res = await fetch("http://localhost:8000/submit-manual", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  return await res.json();
+}

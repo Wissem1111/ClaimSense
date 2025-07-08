@@ -166,3 +166,46 @@ def skip_user():
     stopped = False                      # Permet au frontend de continuer normalement
     return {"skipped": True}
 
+@app.post("/submit-manual")
+def submit_manual(data: dict):
+    print("Soumission manuelle reçue :", data)
+    data = normalize_booleans(data)
+
+    # Extract user fields
+    user_data = {k: data[k] for k, _ in user_questions}
+    user_id = get_or_create_user(user_data)
+
+    # Add remaining
+    declaration_data = {k: data[k] for k, _ in declaration_questions}
+    declaration_data["idUser"] = user_id
+    declaration_data["engagement"] = "Je déclare sur l'honneur que les informations sont exactes."
+
+    r = requests.post("http://localhost:8080/api/declarations/vocal", json=declaration_data)
+
+    try:
+        r.raise_for_status()
+        return {"message": "Déclaration manuelle envoyée", "data": r.json()}
+    except Exception as e:
+        return {"error": str(e)}
+
+@app.get("/history")
+def get_user_history(fullName: str, dateOfBirth: str):
+    try:
+        res = requests.get("http://localhost:8080/api/users/search", params={
+            "fullName": fullName,
+            "dateOfBirth": dateOfBirth
+        })
+        res.raise_for_status()
+        user = res.json()
+
+        if not user or "idUser" not in user:
+            return {"history": []}
+
+        user_id = user["idUser"]
+        decls = requests.get(f"http://localhost:8080/api/declarations/user/{user_id}")
+        decls.raise_for_status()
+
+        return {"history": decls.json()}
+    except Exception as e:
+        print("Erreur historique:", e)
+        return {"error": str(e)}

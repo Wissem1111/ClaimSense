@@ -46,9 +46,16 @@ public class DeclarationController {
         if (result == null) {
             return ResponseEntity.internalServerError().build();
         }
-
         return ResponseEntity.ok(result);
     }
+
+
+    @GetMapping("/user/{idUser}")
+    public ResponseEntity<List<DeclarationDto>> getDeclarationsByUser(@PathVariable int idUser) {
+        return ResponseEntity.ok(declarationService.getDeclarationsByUser(idUser));
+    }
+
+
 
 
 //ce pour recevoir les données JSON que Python envoie.

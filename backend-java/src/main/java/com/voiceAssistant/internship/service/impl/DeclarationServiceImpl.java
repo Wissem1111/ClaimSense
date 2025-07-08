@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.stream.Collectors;
 
+
 @Service
 @RequiredArgsConstructor
 public class DeclarationServiceImpl implements DeclarationService {
@@ -73,6 +74,16 @@ public class DeclarationServiceImpl implements DeclarationService {
                 .collect(Collectors.toList());
     }
 
+
+
+    public List<DeclarationDto> getDeclarationsByUser(int idUser) {
+        return declarationRepository.findByUserIdUser(idUser)
+                .stream()
+                .map(DeclarationDto::toDto)
+                .collect(Collectors.toList());
+    }
+
+
     public DeclarationDto updateDeclaration(int id, DeclarationDto dto) {
         Declaration declaration = declarationRepository.findById(id).orElseThrow(() -> new RuntimeException("Déclaration introuvable"));
         declaration.setIncidentDate(dto.getIncidentDate());
@@ -94,5 +105,4 @@ public class DeclarationServiceImpl implements DeclarationService {
         declaration.setStatus(dto.getStatus());
         return DeclarationDto.toDto(declarationRepository.save(declaration));
     }
-
 }

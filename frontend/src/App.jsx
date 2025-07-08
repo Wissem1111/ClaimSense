@@ -1,11 +1,17 @@
 import { useState } from "react";
 import "./index.css";
+import ManualForm from "./ManualForm";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+
+
 import {
   getCurrentQuestion,
   listenAndCorrect,
   confirmAnswer,
   stopProcess,
   submitDeclaration,
+  submitManualDeclaration,
   skipUserQuestions 
 } from "./api";
 
@@ -17,7 +23,11 @@ function App() {
   const [corrected, setCorrected] = useState("");
   const [answers, setAnswers] = useState({});
   const [loading, setLoading] = useState(false);
+  const [history, setHistory] = useState([]);
 
+
+  
+  
   const fetchNext = async () => {
   const data = await getCurrentQuestion();
   if (data.done) {
@@ -35,7 +45,10 @@ function App() {
 };
 
 
-  const handleListen = async () => {
+  
+
+
+const handleListen = async () => {
     setLoading(true);
     const data = await listenAndCorrect();
     setRaw(data.raw);
@@ -43,6 +56,9 @@ function App() {
     setLoading(false);
   };
 
+  
+  
+  
   const handleConfirm = async (ok) => {
     if (ok && question) {
       const key = question.split("?")[0].toLowerCase().replace(/[^a-z0-9]/g, "_");
@@ -52,11 +68,27 @@ function App() {
     fetchNext();
   };
 
+  
+  
   const handleSubmit = async () => {
-    const result = await submitDeclaration();
-    alert(result.message || "Erreur lors de l'envoi");
+  let result;
+    try {
+    if (Object.keys(answers).length >= 15) {
+      result = await submitManualDeclaration(answers);
+    } else {
+      result = await submitDeclaration();
+    }
+
+    alert(result?.message || "Erreur lors de l'envoi");
     handleRestart();
+  } catch (error) {
+    console.error("Erreur lors de la soumission :", error);
+    alert("Une erreur s'est produite lors de l'envoi de la déclaration.");
+  }
   };
+
+
+
 
   const handleRestart = async () => {
     await stopProcess();
@@ -67,15 +99,148 @@ function App() {
     setStage("start");
   };
 
+  
+  
+  
+  
+  const generateStyledPDF = () => {
+  const doc = new jsPDF();
+
+  // 1. Titre
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(22);
+  doc.setTextColor(59, 130, 246); // bleu stylisé
+  doc.text("Déclaration d'Assurance", 105, 20, null, null, "center");
+
+  // 2. Sous-titre
+  doc.setFontSize(14);
+  doc.setTextColor(33, 33, 33);
+  doc.text("Résumé généré automatiquement", 105, 30, null, null, "center");
+
+  // 3. Tableau des réponses
+  const tableBody = Object.entries(answers).map(([key, value]) => [
+    key.replace(/_/g, " ").toUpperCase(),
+    value,
+  ]);
+
+  autoTable(doc, {
+    startY: 40,
+    head: [["Champ", "Valeur"]],
+    body: tableBody,
+    styles: {
+      fontSize: 11,
+      halign: 'left',
+      valign: 'middle',
+      cellPadding: 4,
+    },
+    headStyles: {
+      fillColor: [59, 130, 246],
+      textColor: 255,
+      fontStyle: 'bold',
+    },
+    alternateRowStyles: {
+      fillColor: [240, 240, 240],
+    },
+    margin: { top: 40 },
+  });
+
+  // 4. Signature ou note en bas
+  doc.setFontSize(12);
+  doc.setTextColor(100);
+  doc.text(
+    "Je déclare sur l'honneur que les informations fournies sont exactes.",
+    20,
+    doc.internal.pageSize.height - 30
+  );
+  doc.text("Signature électronique : ____________________", 20, doc.internal.pageSize.height - 20);
+
+  // 5. Sauvegarde
+  doc.save("declaration-assurance.pdf");
+};
+
+
+
+
+
+
+const fetchHistory = async () => {
+  const fullName = answers.fullName || "";
+  const dateOfBirth = answers.dateOfBirth || "";
+
+  try {
+    const res = await fetch(`http://localhost:8000/history?fullName=${encodeURIComponent(fullName)}&dateOfBirth=${encodeURIComponent(dateOfBirth)}`);
+    const data = await res.json();
+
+      if (Array.isArray(data.history)) {
+      setHistory(data.history);
+      setStage("history");
+    } else {
+      alert("Aucune déclaration trouvée.");
+    }
+  } catch (error) {
+    console.error("Erreur historique:", error);
+    alert("Impossible de récupérer l'historique.");
+  }
+};
+
+
+
+const generateHistoryPDF = (data) => {
+  const doc = new jsPDF();
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(20);
+  doc.setTextColor(59, 130, 246);
+  doc.text("Historique de Déclaration", 105, 20, null, null, "center");
+
+  const tableData = Object.entries(data).map(([key, value]) => [
+    key.replace(/_/g, " ").toUpperCase(),
+    String(value),
+  ]);
+
+  autoTable(doc, {
+    startY: 30,
+    head: [["Champ", "Valeur"]],
+    body: tableData,
+    styles: { fontSize: 10 },
+    headStyles: { fillColor: [59, 130, 246], textColor: 255 },
+  });
+
+  doc.save(`declaration-${data.incidentDate}.pdf`);
+};
+
+
+
+
+  
   return (
     <div className="app-container">
       <h1>Assistant Vocal Intelligent</h1>
 
       {stage === "start" && (
-        <button className="primary-btn" onClick={fetchNext}>
-          Démarrer
-        </button>
+        <div className="start-options">
+          <h2>Choisissez votre mode :</h2>
+          <button className="primary-btn" onClick={fetchNext}>
+            Répondre par la voix
+          </button>
+          <button className="secondary-btn" onClick={() => setStage("form")}>
+            Remplir un formulaire
+          </button>
+        </div>
       )}
+
+
+      {stage === "form" && (
+        <ManualForm
+        onSubmit={(data) => {
+        setAnswers(data);
+        setStage("summary");
+      }}
+        onCancel={handleRestart}
+      />
+      )}
+
+
 
       {stage === "asking" && (
         <div className="question-box">
@@ -134,6 +299,31 @@ function App() {
       )}
 
 
+      {stage === "history" && (
+        <div className="summary-box">
+          <h2>Historique des Déclarations</h2>
+          {history.length === 0 ? (
+           <p>Aucune déclaration disponible.</p>
+          ) : (
+          <ul>
+          {history.map((d, i) => (
+            <li key={i}>
+              <strong>Déclaration #{i + 1}</strong><br />
+              <span>Date : {d.incidentDate} | Lieu : {d.incidentLocation}</span><br />
+              <button className="secondary-btn" onClick={() => generateHistoryPDF(d)}>
+                Télécharger PDF
+              </button>
+            </li>
+          ))}
+          </ul>
+          )}
+          <button className="stop-btn" onClick={handleRestart}>Retour</button>
+        </div>
+      )}
+  
+
+
+
       {stage === "summary" && (
         <div className="summary-box">
           <h2>Résumé</h2>
@@ -144,7 +334,10 @@ function App() {
           </ul>
 
           <button className="primary-btn" onClick={handleSubmit}>Envoyer</button>
+          <button className="secondary-btn" onClick={generateStyledPDF}>Télécharger le PDF</button>
           <button className="stop-btn" onClick={handleRestart}>Recommencer</button>
+          <button className="secondary-btn" onClick={fetchHistory}> Voir l'historique </button>
+
         </div>
       )}
     </div>
