@@ -6,5 +6,7 @@ Ce projet vise à simplifier la déclaration d'accidents pour les assurés, en p
 
 ## Structure du projet
  frontend/ # Interface utilisateur React
+ 
  backend-python/ # Serveur FastAPI : écoute vocale avec IA
+ 
  backend-java/ # Backend principal Spring Boot : API + base de données
