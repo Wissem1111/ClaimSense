@@ -35,8 +35,24 @@ public class DeclarationController {
         return ResponseEntity.ok(declarationService.updateDeclaration(id, dto));
     }
 
+
+
+    /*@PostMapping("/vocal")
+    public ResponseEntity<DeclarationDto> receiveFromPython(@Valid @RequestBody DeclarationDto dto, HttpServletRequest request) {
+        log.info("Received from Python: {}", dto);
+        log.info("Content-Type received: {}", request.getContentType());
+
+        DeclarationDto result = declarationService.createDeclaration(dto);
+        if (result == null) {
+            return ResponseEntity.internalServerError().build();
+        }
+        log.info("Returning to Python: {}", result);
+        return ResponseEntity.ok(result);
+    }*/
+
+
     @PostMapping("/vocal")
-    public ResponseEntity<DeclarationDto> receiveFromPython(@RequestBody DeclarationDto dto, HttpServletRequest request) {
+    public ResponseEntity<DeclarationDto> receiveFromPython(@Valid @RequestBody DeclarationDto dto, HttpServletRequest request) {
         System.out.println("Reçu depuis Python : " + dto);
         System.out.println("Content-Type reçu: " + request.getContentType());
 
@@ -53,6 +69,18 @@ public class DeclarationController {
     @GetMapping("/user/{idUser}")
     public ResponseEntity<List<DeclarationDto>> getDeclarationsByUser(@PathVariable int idUser) {
         return ResponseEntity.ok(declarationService.getDeclarationsByUser(idUser));
+    }
+
+    @PutMapping("/{id}/status")
+    public ResponseEntity<DeclarationDto> updateStatus(
+            @PathVariable int id,
+            @RequestParam String newStatus) {
+        try {
+            DeclarationDto updated = declarationService.updateStatus(id, newStatus);
+            return ResponseEntity.ok(updated);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(null);
+        }
     }
 
 

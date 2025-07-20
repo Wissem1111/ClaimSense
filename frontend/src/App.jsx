@@ -4,7 +4,6 @@ import ManualForm from "./ManualForm";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
-
 import {
   getCurrentQuestion,
   listenAndCorrect,
@@ -12,82 +11,188 @@ import {
   stopProcess,
   submitDeclaration,
   submitManualDeclaration,
-  skipUserQuestions 
+  skipUserQuestions,
 } from "./api";
 
 
-function App() {
-  const [stage, setStage] = useState("start"); // start | asking | summary and
+
+import { updateDeclarationStatus } from "./api"; 
+function StatusUpdateButtons({ declarationId, currentStatus, onUpdated }) {
+  const handleChange = async (newStatus) => {
+    try {
+      const updated = await updateDeclarationStatus(declarationId, newStatus);
+      alert("Statut mis à jour: " + updated.status);
+      if (onUpdated) onUpdated(updated);
+    } catch (error) {
+      alert("Erreur lors de la mise à jour du statut.");
+    }
+  };
+
+  return (
+    <div style={{ marginTop: "8px" }}>
+      {currentStatus === "en_attente" && (
+        <button className="secondary-btn" onClick={() => handleChange("en_cours")}>
+          Démarrer traitement
+        </button>
+      )}
+      {currentStatus === "en_cours" && (
+        <>
+          <button className="secondary-btn" onClick={() => handleChange("validée")}>Valider</button>
+          <button className="stop-btn" onClick={() => handleChange("refusée")}>Refuser</button>
+        </>
+      )}
+    </div>
+  );
+}
+
+
+
+
+
+
+
+
+
+function formatDateFR(dateString) {
+  if (!dateString) return "";
+  const date = new Date(dateString);
+  if (isNaN(date)) return dateString; // fallback if invalid
+  return date.toLocaleDateString("fr-FR", {
+    year: "numeric",
+    month: "long",
+    day: "numeric"
+  });
+}
+
+
+  function App() {
+  const [historyStack, setHistoryStack] = useState([]);
+  const [stage, setStage] = useState("start");
   const [question, setQuestion] = useState("");
   const [raw, setRaw] = useState("");
   const [corrected, setCorrected] = useState("");
   const [answers, setAnswers] = useState({});
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState([]);
+  const [submitted, setSubmitted] = useState(false); 
+  const [currentKey, setCurrentKey] = useState("");
 
 
-  
-  
-  const fetchNext = async () => {
-  const data = await getCurrentQuestion();
-  if (data.done) {
-    setStage("summary");
-  } else {
-    setQuestion(data.question);
-    setRaw("");
-    setCorrected("");
-    if (data.userExists) {
-      setStage("user-found");
-    } else {
-      setStage("asking");
-    }
-  }
+
+  const startVoiceSession = async () => {
+  await stopProcess();
+  setStage("asking");
+  setAnswers({});
+  setRaw("");
+  setCorrected("");
+  setQuestion("");
+  setSubmitted(false);
+  setLoading(false);
+  fetchNext();  
 };
 
 
-  
+  const fetchNext = async () => {
+    setLoading(true); 
+    const data = await getCurrentQuestion();
+    setLoading(false); 
+    if (data.done) {
+      setStage("summary");
+    } else {
+      setQuestion(data.question);
+      setCurrentKey(data.key); 
+      setRaw("");
+      setCorrected("");
+      if (data.userExists) {
+        setStage("user-found");
+      } else {
+        setStage("asking");
+      }
+    }
+  };
+
+
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      if (stage === "summary" && Object.keys(answers).length > 0) {
+        playStoSend();
+        const result = await submitManualDeclaration(answers);
+        setSubmitted(true);
+        alert(result?.message || "Erreur lors de l'envoi");
+        
+      } else {
+        const result = await submitDeclaration(answers);
+        setSubmitted(true);
+        alert(result?.message || "Erreur lors de l'envoi");
+        
+      }
+    } catch (error) {
+      console.error("Erreur lors de la soumission :", error);
+      alert("Une erreur s'est produite lors de l'envoi de la declaration.");
+    }
+  };
+
+const playBeep = () => {
+  const audio = new Audio("/beep.mp3");
+  audio.play();
+};
+
+const playStopBeep = () => {
+  const audio = new Audio("/stop-beep.mp3");
+  audio.play();
+};
+
+const playStoSend = () => {
+  const audio = new Audio("/send.mp3");
+  audio.play();
+};
+
 
 
 const handleListen = async () => {
-    setLoading(true);
-    const data = await listenAndCorrect();
-    setRaw(data.raw);
-    setCorrected(data.corrected);
-    setLoading(false);
-  };
+  setLoading(true);
+  playBeep();
+  const data = await listenAndCorrect();
+  setRaw(data.raw);
+  setCorrected(data.corrected);
+  setLoading(false);
+};
 
-  
-  
   
   const handleConfirm = async (ok) => {
-    if (ok && question) {
-      const key = question.split("?")[0].toLowerCase().replace(/[^a-z0-9]/g, "_");
-      setAnswers((prev) => ({ ...prev, [key]: corrected }));
-    }
-    await confirmAnswer(ok);
-    fetchNext();
-  };
-
-  
-  
-  const handleSubmit = async () => {
-  let result;
-    try {
-    if (Object.keys(answers).length >= 15) {
-      result = await submitManualDeclaration(answers);
-    } else {
-      result = await submitDeclaration();
-    }
-
-    alert(result?.message || "Erreur lors de l'envoi");
-    handleRestart();
-  } catch (error) {
-    console.error("Erreur lors de la soumission :", error);
-    alert("Une erreur s'est produite lors de l'envoi de la déclaration.");
+  if (ok && currentKey) {
+    setAnswers((prev) => ({ ...prev, [currentKey]: corrected }));
   }
-  };
+  await confirmAnswer(ok);
+  fetchNext();
+};
+  
 
-
+  const fieldLabels = {
+  fullName: "Nom complet",
+  dateOfBirth: "Date de naissance",
+  phone: "Téléphone",
+  driverLicenseNumber: "Numéro de permis",
+  licenseValidityDate: "Validité du permis",
+  incidentDate: "Date de l'incident",
+  incidentTime: "Heure de l'incident",
+  incidentLocation: "Lieu de l'incident",
+  vehicleRegistration: "Immatriculation du véhicule",
+  vehicleBrand: "Marque du véhicule",
+  incidentType: "Type d'incident",
+  incidentDetails: "Détails de l'incident",
+  impactPoint: "Point d'impact",
+  circumstances: "Circonstances",
+  amicableReport: "Constat à l'amiable",
+  policeReport: "Rapport de police",
+  policeReceipt: "Récépissé de police",
+  insuredDeclaration: "Déclaration de l'assuré",
+  calledAssistance: "Assistance appelée",
+  calledTowTruck: "Dépanneuse appelée",
+  status: "Statut de traitement",
+};
 
 
   const handleRestart = async () => {
@@ -97,30 +202,21 @@ const handleListen = async () => {
     setCorrected("");
     setAnswers({});
     setStage("start");
-  };
+    setHistoryStack([]); 
 
-  
-  
-  
-  
+  };
+ 
   const generateStyledPDF = () => {
   const doc = new jsPDF();
 
-  // 1. Titre
   doc.setFont("helvetica", "bold");
   doc.setFontSize(22);
-  doc.setTextColor(59, 130, 246); // bleu stylisé
-  doc.text("Déclaration d'Assurance", 105, 20, null, null, "center");
+  doc.setTextColor(59, 130, 246); 
+  doc.text("Declaration d'Assurance", 105, 20, null, null, "center");
 
-  // 2. Sous-titre
-  doc.setFontSize(14);
-  doc.setTextColor(33, 33, 33);
-  doc.text("Résumé généré automatiquement", 105, 30, null, null, "center");
-
-  // 3. Tableau des réponses
   const tableBody = Object.entries(answers).map(([key, value]) => [
-    key.replace(/_/g, " ").toUpperCase(),
-    value,
+    fieldLabels[key] || key.replace(/_/g, " ").toUpperCase(),
+    typeof value === "boolean" ? (value ? "Oui" : "Non") : value,
   ]);
 
   autoTable(doc, {
@@ -144,24 +240,17 @@ const handleListen = async () => {
     margin: { top: 40 },
   });
 
-  // 4. Signature ou note en bas
   doc.setFontSize(12);
   doc.setTextColor(100);
   doc.text(
-    "Je déclare sur l'honneur que les informations fournies sont exactes.",
+    "Je declare sur l'honneur que les informations fournies sont exactes.",
     20,
     doc.internal.pageSize.height - 30
   );
-  doc.text("Signature électronique : ____________________", 20, doc.internal.pageSize.height - 20);
+  doc.text("Signature electronique", 20, doc.internal.pageSize.height - 20);
 
-  // 5. Sauvegarde
   doc.save("declaration-assurance.pdf");
 };
-
-
-
-
-
 
 const fetchHistory = async () => {
   const fullName = answers.fullName || "";
@@ -175,15 +264,13 @@ const fetchHistory = async () => {
       setHistory(data.history);
       setStage("history");
     } else {
-      alert("Aucune déclaration trouvée.");
+      alert("Aucune declaration trouvee.");
     }
   } catch (error) {
     console.error("Erreur historique:", error);
-    alert("Impossible de récupérer l'historique.");
+    alert("Impossible de recuperer l'historique.");
   }
 };
-
-
 
 const generateHistoryPDF = (data) => {
   const doc = new jsPDF();
@@ -191,7 +278,7 @@ const generateHistoryPDF = (data) => {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(20);
   doc.setTextColor(59, 130, 246);
-  doc.text("Historique de Déclaration", 105, 20, null, null, "center");
+  doc.text("Historique de Declaration", 105, 20, null, null, "center");
 
   const tableData = Object.entries(data).map(([key, value]) => [
     key.replace(/_/g, " ").toUpperCase(),
@@ -211,35 +298,72 @@ const generateHistoryPDF = (data) => {
 
 
 
+  const goToStage = (next) => {
+    setHistoryStack((stack) => [...stack, stage]);
+    setStage(next);
+  };
 
-  
+  const goBack = () => {
+    setHistoryStack((stack) => {
+      if (stack.length === 0) {
+        handleRestart();
+        return [];
+      }
+      const newStack = [...stack];
+      const prev = newStack.pop();
+      setStage(prev);
+      return newStack;
+    });
+  };
+ 
   return (
     <div className="app-container">
-      <h1>Assistant Vocal Intelligent</h1>
+        <div className="header">
+        {stage !== "start" && (
+          <button
+            className="back-button"
+            onClick={goBack}
+          >
+            Retour
+          </button>
+        )}
+        <h1>ClaimSense</h1>
+      </div>
+    <h4>Assistant Vocal Intelligent</h4>
 
       {stage === "start" && (
         <div className="start-options">
-          <h2>Choisissez votre mode :</h2>
-          <button className="primary-btn" onClick={fetchNext}>
-            Répondre par la voix
-          </button>
-          <button className="secondary-btn" onClick={() => setStage("form")}>
+          <h2>Choisissez votre mode</h2>
+          <button
+  className="primary-btn"
+  onClick={startVoiceSession}
+>
+  Répondre par la voix
+</button>
+          <button className="secondary-btn" onClick={() => goToStage("form")}>
             Remplir un formulaire
           </button>
         </div>
       )}
 
 
+      {loading && <div className="loader">⏳ Veuillez parler...</div>}
+
+
+
       {stage === "form" && (
         <ManualForm
-        onSubmit={(data) => {
-        setAnswers(data);
-        setStage("summary");
-      }}
-        onCancel={handleRestart}
-      />
+          onSubmit={(data) => {
+            setAnswers(data);
+            setSubmitted(false);
+            setStage("summary");
+          }}
+          onCancel={() => {
+            playStopBeep();
+            handleRestart();
+          }}
+        />
       )}
-
 
 
       {stage === "asking" && (
@@ -267,7 +391,7 @@ const generateHistoryPDF = (data) => {
           )}
 
           <div style={{ marginTop: "20px" }}>
-            <button className="stop-btn" onClick={handleRestart}>Arrêter</button>
+            <button className="stop-btn" onClick={() =>{handleRestart(); playStopBeep();}}>Arrêter</button>
           </div>
         </div>
       )}
@@ -290,8 +414,6 @@ const generateHistoryPDF = (data) => {
         >
   Passer à la déclaration
 </button>
-
-
         <button className="stop-btn" onClick={handleRestart}>
           Recommencer une nouvelle déclaration
         </button>
@@ -307,41 +429,69 @@ const generateHistoryPDF = (data) => {
           ) : (
           <ul>
           {history.map((d, i) => (
-            <li key={i}>
-              <strong>Déclaration #{i + 1}</strong><br />
-              <span>Date : {d.incidentDate} | Lieu : {d.incidentLocation}</span><br />
-              <button className="secondary-btn" onClick={() => generateHistoryPDF(d)}>
-                Télécharger PDF
-              </button>
-            </li>
-          ))}
+  <li key={i}>
+    <strong>Déclaration {i + 1}</strong><br />
+    <span>
+      Date : {formatDateFR(d.incidentDate)} <br />
+      Lieu : {d.incidentLocation} <br />
+      Statut : {d.status || "Non défini"}
+    </span><br />
+
+    <button className="secondary-btn" onClick={() => generateHistoryPDF(d)}>
+      Télécharger PDF
+    </button>
+
+    <StatusUpdateButtons
+      declarationId={d.idDeclaration}
+      currentStatus={d.status}
+      onUpdated={(updated) => {
+        setHistory((prev) =>
+          prev.map((item) =>
+            item.idDeclaration === updated.idDeclaration ? updated : item
+          )
+        );
+      }}
+    />
+  </li>
+))}
+
           </ul>
           )}
           <button className="stop-btn" onClick={handleRestart}>Retour</button>
         </div>
       )}
   
-
-
-
       {stage === "summary" && (
         <div className="summary-box">
-          <h2>Résumé</h2>
-          <ul>
-            {Object.entries(answers).map(([k, v]) => (
-              <li key={k}><strong>{k.replace(/_/g, " ")}:</strong> {v}</li>
-            ))}
-          </ul>
+              <h2>Résumé</h2>
+              <ul className="summary-list">
+                {Object.entries(answers).map(([k, v]) => (
+                <li key={k}>
+                  <strong>{fieldLabels[k] || k} :</strong><br />
+                  {typeof v === "boolean" ? v ? "Oui" : "Non" : String(v)}
+                </li>
+                ))}
+              </ul>
 
-          <button className="primary-btn" onClick={handleSubmit}>Envoyer</button>
-          <button className="secondary-btn" onClick={generateStyledPDF}>Télécharger le PDF</button>
-          <button className="stop-btn" onClick={handleRestart}>Recommencer</button>
-          <button className="secondary-btn" onClick={fetchHistory}> Voir l'historique </button>
+          {!submitted && (
+            <button className="primary-btn" onClick={handleSubmit}>Envoyer</button>
+          )}
+
+          {submitted && (
+           <>
+            <button className="secondary-btn" onClick={generateStyledPDF}>Télécharger le PDF</button>
+            <button className="stop-btn" onClick={handleRestart}>Recommencer</button>
+            <button className="secondary-btn" onClick={fetchHistory}>Voir l'historique</button>
+           </>
+          )}
 
         </div>
       )}
+
+
+
+
     </div>
   );
 }
-
 export default App;

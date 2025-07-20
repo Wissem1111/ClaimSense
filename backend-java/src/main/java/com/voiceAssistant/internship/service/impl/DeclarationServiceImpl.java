@@ -8,6 +8,7 @@ import com.voiceAssistant.internship.repository.DeclarationRepository;
 import com.voiceAssistant.internship.repository.UserRepository;
 import com.voiceAssistant.internship.service.DeclarationService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -16,6 +17,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class DeclarationServiceImpl implements DeclarationService {
     private final DeclarationRepository declarationRepository;
     private final UserRepository userRepository;
@@ -40,9 +42,14 @@ public class DeclarationServiceImpl implements DeclarationService {
         declaration.setCalledAssistance(dto.isCalledAssistance());
         declaration.setCalledTowTruck(dto.isCalledTowTruck());
         declaration.setEngagement(dto.getEngagement());
-        declaration.setStatus(dto.getStatus());
+
+        String initialStatus = (dto.getStatus() == null || dto.getStatus().isBlank()) ? "en attente" : dto.getStatus();
+        declaration.setStatus(initialStatus);
+
+        //declaration.setStatus(dto.getStatus());
         declaration.setUser(user);
         Declaration saved = declarationRepository.save(declaration);
+        log.info(" Saved declaration: {}", saved);
         dto.setIdDeclaration(saved.getIdDeclaration());
         return dto;
     }
@@ -105,4 +112,23 @@ public class DeclarationServiceImpl implements DeclarationService {
         declaration.setStatus(dto.getStatus());
         return DeclarationDto.toDto(declarationRepository.save(declaration));
     }
+
+    @Override
+    public DeclarationDto updateStatus(int id, String newStatus) {
+        Declaration declaration = declarationRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Déclaration introuvable"));
+
+        String currentStatus = declaration.getStatus();
+        if (currentStatus.equals("en_attente") && newStatus.equals("en_cours")) {
+            declaration.setStatus("en_cours");
+        } else if (currentStatus.equals("en_cours") &&
+                (newStatus.equals("validée") || newStatus.equals("refusée"))) {
+            declaration.setStatus(newStatus);
+        } else {
+            throw new RuntimeException("Transition de statut non autorisée !");
+        }
+
+        return DeclarationDto.toDto(declarationRepository.save(declaration));
+    }
+
 }

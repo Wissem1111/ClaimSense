@@ -46,3 +46,20 @@ export async function submitManualDeclaration(data) {
   });
   return await res.json();
 }
+
+export async function updateDeclarationStatus(id, newStatus) {
+  const response = await fetch(`http://localhost:8080/api/declarations/${id}/status?newStatus=${newStatus}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error("Échec de la mise à jour du statut");
+  }
+
+  return await response.json();
+}
+
+

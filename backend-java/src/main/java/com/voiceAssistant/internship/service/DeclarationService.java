@@ -9,4 +9,5 @@ public interface DeclarationService {
     public List<DeclarationDto> getAllDeclarations();
     public List<DeclarationDto> getDeclarationsByUser(int idUser);
     public DeclarationDto updateDeclaration(int id, DeclarationDto dto);
+    public DeclarationDto updateStatus(int id, String newStatus);
 }

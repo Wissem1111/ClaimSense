@@ -9,13 +9,10 @@ import java.util.Map;
 @Service
 @RequiredArgsConstructor
 public class AssistantTriggerService {
-
-
     private final AssistantFeignClient assistantFeignClient;
     public String runAssistant() {
         Map<String, String> result = assistantFeignClient.runVoiceAssistant();
         return result.get("message");
     }
-
 }
 
