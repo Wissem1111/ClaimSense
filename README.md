@@ -23,26 +23,33 @@ Ce projet vise à simplifier la déclaration la déclaration de sinistres automo
 ```
 ClaimSense/
 │
-├── frontend/                # Application React.js (UI)
+├── frontend/                # Application React.js
 │   ├── public/
+│   │   ├── beep.mp3     
+│   │   ├── icon.ico
+│   │   └── send.mp3 
+│   │   ├── stop-beep.mp3 
 │   ├── src/
-│   │   ├── components/      # Composants réutilisables
-│   │   ├── pages/           # Pages principales
-│   │   └── services/        # Appels API
+│   │   ├── api.js    
+│   │   ├── App.jsx
+│   │   └── index.css
+│   │   ├── main.jsx
+│   │   └── ManualForm.jsx
 │
 ├── backend-python/          # Serveur vocal IA (FastAPI)
 │   ├── main.py              # Point d’entrée FastAPI
-│   ├── speech_to_text.py    # STT (speech recognition)
-│   ├── ai_correction.py     # Correction sémantique du texte
+│   ├── speech_to_text.py    # speech recognition
+│   ├── ai_correction.py     # Correction automatique du texte
 │   └── requirements.txt
 │
 ├── backend-java/            # Backend principal (Spring Boot)
-│   ├── controllers/         # Points d’entrée API
-│   ├── services/            # Logique métier
-│   ├── dto/                 # Data Transfer Objects
-│   ├── entities/            # Entités JPA
-│   ├── repositories/        # Accès aux données
-│   └── security/            # Authentification & JWT
+│   ├── client/
+│   ├── controller/         # Points d’entrée API
+│   ├── service/            # Logique métier
+│   ├── dto/                # Data Transfer Objects
+│   ├── model/              # Entités JPA
+│   ├── repositoriy/        # Accès aux données
+│   └── exception/          
 │
 ├── database/                # SQL & config DB (MySQL)
 ├── README.md                # Documentation du projet
@@ -54,12 +61,12 @@ ClaimSense/
 
 | Domaine            | Technologies                          |
 |--------------------|----------------------------------------|
-| Frontend           | React.js, Bootstrap, Axios             |
-| Backend principal  | Spring Boot, Java, JPA, MySQL, JWT     |
+| Frontend           | React.js, Bootstrap                    |
+| Backend principal  | Spring Boot, Java, JPA, pgAdmin 4      |
 | Backend vocal      | FastAPI, Python, SpeechRecognition     |
 | IA (correction)    | NLP personnalisé (Python)              |
-| Authentification   | JWT, Spring Security                   |
-| Fichiers PDF       | iText (Java) / ReportLab (Python)      |
+| Authentification   |      Spring Security                   |
+| Fichiers PDF       | jsPDF (React.js)                       |
 
 ---
 
@@ -97,8 +104,8 @@ npm start
 ## Aperçu de l'application
 
 > _Une interface claire, un processus rapide, et un suivi intelligent._
+<img width="1385" height="865" alt="Screenshot 2025-07-21 012630" src="https://github.com/user-attachments/assets/7482c554-f013-464a-a9b4-70d82e305683" />
 
-![Aperçu de l'application ClaimSense](https://example.com/preview.png)
 
 ---
 
