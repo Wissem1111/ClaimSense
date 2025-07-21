@@ -104,11 +104,14 @@ npm start
 
 > _Une interface claire, un processus rapide, et un suivi intelligent._
 <img width="1385" height="865" alt="Screenshot 2025-07-21 012630" src="https://github.com/user-attachments/assets/7482c554-f013-464a-a9b4-70d82e305683" />
-> _On clique sur "Remplir un formulaire":_
+
+> _On clique sur "Remplir un formulaire"._
 <img width="1419" height="917" alt="Screenshot 2025-07-21 012732" src="https://github.com/user-attachments/assets/d2ad229c-e57f-4d58-9119-15d04199e0c1" />
-> _On soumet ses informations, un résumé s’affiche avant l’envoi :_
+
+> _On soumet ses informations, un résumé s’affiche avant l’envoi._
 <img width="1419" height="917" alt="Screenshot 2025-07-21 012732" src="https://github.com/user-attachments/assets/048aaf8d-d9bd-4a88-852b-03f9a25f484f" />
-> _Après l’envoi, confirmation de la déclaration :_
+
+> _Après l’envoi, confirmation de la déclaration._
 <img width="1423" height="889" alt="Screenshot 2025-07-21 012849" src="https://github.com/user-attachments/assets/8093e457-232f-4678-b4b2-639ccb8d581f" />
 
 
